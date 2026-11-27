@@ -23,7 +23,8 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
-from src.loss_functions import mse_loss  # noqa: E402
+from src.activations import derivative_sigmoid, sigmoid  # noqa: E402
+from src.loss_functions import df_mse_loss, mse_loss  # noqa: E402
 
 
 def load_mlp_module():
@@ -61,8 +62,14 @@ def main():
     print(f"First 5 rows:\n{x[:5]}")
     print(f"First 5 labels: {y.head().tolist()}\n")
 
-    # Single hidden layer with 4 neurons (matches current MLP note)
-    model = MLP(loss_function=mse_loss, hidden_layer_nodes=[3])
+    # Baseline hidden layer: 2 nodes, sigmoid on hidden and output
+    model = MLP(
+        loss_function=mse_loss,
+        df_loss_function=df_mse_loss,
+        hidden_layer_nodes=[2],
+        activation=sigmoid,
+        df_activation=derivative_sigmoid,
+    )
 
     print("Starting training...\n")
     model.train(x, y, learning_rate=0.5, max_iter=5)

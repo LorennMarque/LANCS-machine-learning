@@ -6,11 +6,15 @@ from src.activations import *
 
 class MLP:
     # For this MLP i followed the steps in Wk3-Lab instructions pdf
-    def __init__(self, loss_function, hidden_layer_nodes):
+    def __init__(self, loss_function, df_loss_function, hidden_layer_nodes, activation=relu, df_activation= derivative_relu):
         self.loss_function = loss_function
+        self.df_loss_function = df_loss_function
         self.hidden_layer_nodes = hidden_layer_nodes
+        self.activation = activation
+        self.df_activation = df_activation
+        self.weights = None
 
-    def train(self, x, Y, learning_rate=0.5, max_iter = 30, initialization = glorot_init, activation=relu):
+    def train(self, x, Y, learning_rate=0.5, max_iter = 30, initialization = glorot_init):
         # NOTE: This only work for a single hidden layer ===============
 
         # Initialize the training by specifying:
@@ -61,18 +65,52 @@ class MLP:
                 print(f"Multiplication w@row: {z}")
 
                 print(f"=== ACTIVATION ===")
-                print(f"Activación: {activation(z)}")
-                v = activation(z)
+                print(f"Activación: {self.activation(z)}")
+                v = self.activation(z)
 
                 print("=== OUTPUT LAYER ===")
                 z_2 = v @ weights_hidden2output
 
-                y_pred = activation(z_2)
+                y_pred = self.activation(z_2)
                 print(f"Final result: {y_pred}")
 
             # b. Calculate the loss
-                loss = self.loss_function(y_act, y_pred)
+                # y_act_vector = [1,0] if y_act else [0,1] # Etiqueta 0 se vuelve [1, 0] y 1 se vuelve [0,1]
+                y_act_vector = np.zeros(len(output_values)) # <- AI refactoring
+                y_act_vector[output_values.index(y_act)] = 1
+
+
+                loss = self.loss_function(y_act_vector, y_pred)
                 print(f"Loss {loss}")
 
             # Backpropagate the error
-            
+                loss_derivative = self.df_loss_function(y_act_vector, y_pred)
+                activation_derivative = self.df_activation(z_2) #ie RELU
+
+                # Chain rule: loss derivative / relu derivative
+                delta = loss_derivative * activation_derivative
+
+                output_layer_gradients = np.outer(v, delta)
+                hidden_layer_gradients = np.outer(row, (weights_hidden2output @ delta) * self.df_activation(z))
+
+                weights_hidden2output -= learning_rate * output_layer_gradients
+                weights_input2hidden -= learning_rate * hidden_layer_gradients
+
+        # Store weigthts when its over
+        self.weights = [weights_input2hidden,weights_hidden2output]
+
+
+    def predict(self, x):
+        y_pred = 0
+
+        weights_input2hidden, weights_hidden2output = self.weights
+
+        # Hidden Layer
+        z = x @ weights_input2hidden
+        v = self.activation(z)
+
+        # Hidden to output layer
+        z_2 = v @ weights_hidden2output
+        y_pred = self.activation(z_2)
+
+        return y_pred
